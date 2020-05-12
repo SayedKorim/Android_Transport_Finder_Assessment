@@ -1,0 +1,115 @@
+import java.sql.*;
+import org.json.*;
+
+public class Database
+{
+	public JSONArray sqliteQuery(double lat, double cos, double lng, String type)
+	{
+		Connection c = null;
+		JSONArray encodedJson = new JSONArray();
+		try
+		{
+			c =  DriverManager.getConnection("jdbc:sqlite:transport.sqlite");
+			
+			String queryString =
+					"SELECT Name, City, Country, IATA, ICAO, Latitude, Longitude, Altitude, Timezone, DST, StationType," 
+			        + "(((? - Latitude) * (? - Latitude)) + (? * ((? - Longitude) * (? - Longitude))))" 
+					+ " AS DistanceMetric" 
+			        + " FROM stations"
+					+ " WHERE StationType = \""+ type +"\"" 
+			        + " ORDER BY DistanceMetric"
+					+ " LIMIT 5;";
+			
+			PreparedStatement s = c.prepareStatement(queryString);
+			s.setDouble(1, lat); 
+			s.setDouble(2, lat);
+			s.setDouble(3, cos);
+			s.setDouble(4, lng);
+			s.setDouble(5, lng);
+			ResultSet rs = s.executeQuery();
+			
+			encodedJson = encodeJson(rs);
+		}
+		catch (SQLException | JSONException e)
+		{
+			e.printStackTrace();
+		} 
+		finally
+		{
+			if (c != null)
+			{
+				try 
+				{
+					c.close();
+				}
+				catch (SQLException e)
+				{
+					e.printStackTrace();
+				}
+			}
+		 }
+		return encodedJson;
+	}
+	
+	public static JSONArray encodeJson(ResultSet rs) throws JSONException, SQLException 
+	{
+        JSONArray array = new JSONArray();
+        
+        try
+        {
+            ResultSetMetaData rsMeta = rs.getMetaData();
+            int columnCnt = rsMeta.getColumnCount();
+            
+            while(rs.next())
+            { 
+                JSONObject obj = new JSONObject();
+                for(int i=1;i<=columnCnt;i++)
+                {
+                	String City = rs.getString("City");
+                	String Country = rs.getString("Country");
+                	String IATA = rs.getString("IATA");
+                	String ICAO = rs.getString("IATA");
+                	String Timezone = rs.getString("Timezone");
+                	String DST= rs.getString("DST");
+                	String StationType = rs.getString("StationType");
+                	String Name = rs.getString("Name");
+                	
+                	obj.put("city", City);
+                	obj.put("country", Country);
+                	obj.put("icao", ICAO);
+                	obj.put("timezone", Timezone);
+                	obj.put("dst", DST);
+                	obj.put("type", StationType);
+                	obj.put("name", Name);
+                	obj.put("iata", IATA);
+                	
+                    String Latitude = rs.getString("Latitude");
+                    String Longitude = rs.getString("Longitude");
+                    String Altitude = rs.getString("Altitude");
+                    
+                    
+                    JSONObject Location = new JSONObject();
+                    Location.put("latitude", Latitude);
+                    Location.put("longitude", Longitude);
+                    Location.put("altitude", Altitude);
+                    obj.put("location",Location);
+                    
+                }
+               
+                array.put(obj);
+            }
+        }
+        finally 
+        {
+            try 
+            {
+                rs.close();
+            }
+            catch (SQLException e) 
+            {
+            	e.printStackTrace();
+           	}
+        }
+        return array;
+    }
+}
