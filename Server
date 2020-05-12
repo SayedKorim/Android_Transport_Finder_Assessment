@@ -1,0 +1,50 @@
+import static spark.Spark.*;
+
+import org.json.JSONArray;
+import spark.Request;
+import spark.Response;
+import spark.Route;
+
+
+public class Server
+{
+	//  URL to decode: 
+	//  http://localhost:8080/stations?latitude=53.472&longitude=-2.244&type=station
+	public static void main(String[] args)
+	{
+		System.setProperty("org.eclipse.jetty.util.log.announce" , "false");
+		System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
+		
+		port(8080);
+		
+		Database db = new Database();
+		
+		get ("/stations", new Route()
+		{			
+			@Override
+			public Object handle(Request arg0, Response arg1) throws Exception
+			{
+				Double latitude = Double.valueOf(arg0.queryParams("latitude"));
+				Double cos = Math.cos(Math.toRadians(latitude));
+				Double longitude = Double.valueOf(arg0.queryParams("longitude"));
+				String type = arg0.queryParams("type");
+				
+				
+				JSONArray results = new JSONArray();
+				results = db.sqliteQuery(latitude,cos,longitude,type);
+				
+				return results;
+			}
+			
+		} 
+		);
+		
+		notFound("<html>"
+				+"<head></head>"
+				+"<body>"
+				+"<h1>404 Not found</h1>"
+				+"<p>Something went wrong</p>"
+				+"<body>"
+				+"</html");
+	}
+}
